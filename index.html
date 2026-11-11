@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>QUANTUM VOID — Combate espacial</title>
+<title>QUANTUM VOID — Space Combat</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 <style>
 :root{--cy:#00f0ff;--bl:#3a86ff;--rd:#ff0055;--gd:#ffd166;--gr:#39ff9c;--pu:#cf38ff}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -299,7 +300,7 @@ function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a
 const SAVE_KEY='qv50_save';
 const defSave=()=>({credits:15000,owned:['s0'],active:'s0',upg:{shield:1,hull:1,laser:1,speed:1,missile:1,inf:1,kam:1,snp:1,bom:1},
   stats:{kills:0,deaths:0,shots:0,hits:0,earned:0,bosses:0,bestWave:0,bestCombo:0,games:0,pvpWins:0,trades:0,dice:0},
-  ver:2,abil:{},frag:{},abEq:'',dpack:'',inv:{repair:0,cell:0,emp:0,magnet:0,over:0},xp:0,name:'',pid:'',daily:'',ach:{},best:{},settings:{sfx:true,music:true,quality:'high',shake:true,evForce:''}});
+  ver:2,abil:{},frag:{},abEq:'',dpack:'',inv:{repair:0,cell:0,emp:0,magnet:0,over:0},xp:0,name:'',pid:'',daily:'',ach:{},best:{},settings:{sfx:true,music:true,quality:'high',shake:true,language:'en',evForce:''}});
 function merge(d,s){for(const k in d){if(s&&k in s){if(d[k]&&typeof d[k]==='object'&&!Array.isArray(d[k])){if(Object.keys(d[k]).length===0&&s[k]&&typeof s[k]==='object')d[k]=s[k];else merge(d[k],s[k]);}else if(typeof d[k]===typeof s[k])d[k]=s[k];}}return d;}
 let save=(()=>{const d=defSave();try{const r=localStorage.getItem(SAVE_KEY);if(r){const s=JSON.parse(r);if(s.ver!==2&&!localStorage.getItem(SAVE_KEY+'_bak'))localStorage.setItem(SAVE_KEY+'_bak',r);merge(d,s);if(Array.isArray(s.owned))d.owned=s.owned;}}catch(e){}
   if(!d.pid)d.pid='p'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);return d;})();
@@ -555,8 +556,8 @@ function updateCfg(dt,c){G.spawnT-=dt;const t=G.t;
    'https://tu-proyecto-default-rtdb.europe-west1.firebasedatabase.app'
    Reglas: {"rules":{"rank":{".read":true,".write":true,".indexOn":["s"]}}}
    Mientras esté vacío, el ranking muestra solo tus récords locales. */
-const DB_URL='';
-const dbOn=()=>/^https:\/\//.test(DB_URL);
+const DB_URL='https://YOUR-PROJECT-default-rtdb.europe-west1.firebasedatabase.app';
+const dbOn=()=>/^https:\/\//.test(DB_URL)&&!DB_URL.includes('YOUR-PROJECT');
 const playerName=()=>(save.name||'').trim().slice(0,14)||('PILOTO-'+save.pid.slice(-4).toUpperCase());
 const boardKey=k=>k==='daily'?'daily-'+dailySeed():k;
 function totalScore(){let t=0;for(const k in save.best)if(k.indexOf('daily-')!==0)t+=save.best[k]||0;return t;}
@@ -574,8 +575,8 @@ function localScore(k){return k==='total'?totalScore():k==='pvp'?save.stats.pvpW
 async function renderRank(){$('rankName').value=save.name||'';
  $('rankTabs').innerHTML=RK.map(k=>`<span class="pill ${k===rankKey?'on':''}" onclick="rankKey='${k}';renderRank()">${k==='total'?'GLOBAL':k==='pvp'?'DUELO P2P (VICTORIAS)':MODES[k].name}</span>`).join('');
  const row=(i,n,s,lv,me)=>`<div class="card rk ${me?'act':''}"><span>${i?'#'+i+' · ':''}${esc(n)}${lv?' <span class="muted" style="font-size:10px">NV.'+lv+'</span>':''}</span><span style="color:var(--gd)">${fmt(s)}</span></div>`;
- const mine=row(0,'TU RÉCORD · '+playerName(),localScore(rankKey),rankOf(save.xp).lv,true);
- const L=$('rankList');$('rankNote').textContent=dbOn()?'Clasificación entre todos los jugadores':'Ranking online sin configurar (DB_URL en el código): solo se muestran tus récords locales';
+ const mine=row(0,(save.settings.language==='en'?'YOUR SCORE · ':'TU RÉCORD · ')+playerName(),localScore(rankKey),rankOf(save.xp).lv,true);
+ const L=$('rankList');$('rankNote').textContent=dbOn()?'Global leaderboard · all players':'Global leaderboard is not configured. Add your Firebase Realtime Database URL.';
  if(!dbOn()){L.innerHTML=mine;return;}
  L.innerHTML=mine+'<div class="muted">Cargando…</div>';const key=rankKey;
  try{const rows=await fetchBoard(boardKey(key));if(key!==rankKey)return;
@@ -599,7 +600,7 @@ function makePlayer(ship,x,y){const u=save.upg;const hm=Math.round(ship.hull*(1+
  return {x,y,vx:0,vy:0,angle:0,ship,r:ship.r,hull:hm,hullMax:hm,shield:sm,shieldMax:sm,shieldDelay:0,energy:100,boostCd:0,boosting:false,
   speed:ship.speed*(1+.06*(u.speed-1)),dmg:ship.dmg*(1+.14*(u.laser-1)),rate:ship.rate/1000,fireCd:0,missiles:mm,missMax:mm,missCd:0,missRegen:0,missDmg:55*(1+.12*(u.missile-1)),
   rapid:0,power:0,invuln:2.5,dead:false,thrust:0,flash:0,shieldHit:0,combo:0,comboT:0,isLocal:true,abCd:10,abMax:20,regen:0,drn:0,drT:0,mag:0};}
-function startGame(modeId,opts){opts=opts||{};Snd.init();Snd.resume();
+function startGame(modeId,opts){opts=opts||{};Snd.init();Snd.resume();cgStart();
  const ship=shipById(save.active);const pvp=modeId==='pvp';
  G={mode:modeId,diff:DIFFS[MODES[modeId].diff||opts.diff||curDiff]||DIFFS.normal,t:0,running:true,paused:false,over:false,eid:0,ww:pvp?2600:3600,wh:pvp?2600:3600,
   enemies:[],bullets:[],missiles:[],asteroids:[],pickups:[],particles:[],rings:[],texts:[],later:[],emap:new Map(),
@@ -1144,7 +1145,7 @@ function applySnap(m){const seen=new Set();
  G.wave=m.w;G.left=m.l;G.bossP=m.bp;G.bossN=m.bn;}
 
 /* ============================ FIN DE PARTIDA ============================ */
-function endGame(win,title,sub){if(!G||G.over)return;G.over=true;
+function endGame(win,title,sub){if(!G||G.over)return;cgStop();G.over=true;
  if(G.mode==='pvp'&&G.bet){const d=win?G.bet:-Math.min(G.bet,save.credits);save.credits+=d;if(win)save.stats.earned+=d;sub+=' · '+(d>=0?'+':'')+fmt(d)+' CR de apuesta';}
  const rk=G.rkey||G.mode;const best=save.best[rk]||0;const rec=G.score>best&&G.mode!=='pvp';if(rec)save.best[rk]=G.score;persist();checkAch();persist();
  if(rec)submitScore(rk,G.score);if(G.mode==='pvp'&&win)submitScore('pvp',save.stats.pvpWins);submitTotal();
@@ -1157,9 +1158,9 @@ function endGame(win,title,sub){if(!G||G.over)return;G.over=true;
  const solo=!G.mp;$('endBtns').innerHTML=(solo?`<button class="btn primary" onclick="retry()">↻ REINTENTAR</button>`:'')+`<button class="btn" onclick="exitToMenu()">MENÚ PRINCIPAL</button>`;
  setTimeout(()=>{if(G&&G.over)$('overlayEnd').classList.remove('hidden');},400);}
 function retry(){const m=G.mode;$('overlayEnd').classList.add('hidden');startGame(m);}
-function exitToMenu(){if(G){G.running=false;}persist();G=null;showHud(false);$('overlayPause').classList.add('hidden');$('overlayEnd').classList.add('hidden');netReset();$('roomBox').classList.add('hidden');showScreen('menu');}
+function exitToMenu(){cgStop();if(G){G.running=false;}persist();G=null;showHud(false);$('overlayPause').classList.add('hidden');$('overlayEnd').classList.add('hidden');netReset();$('roomBox').classList.add('hidden');showScreen('menu');}
 function confirmExit(){if(G&&!G.over&&!G.mp)G.paused=true;if(confirm('¿Abandonar la partida?'))exitToMenu();else if(G)G.paused=false;}
-function togglePause(){if(!G||G.over)return;if(G.mp){toast('No se puede pausar en multijugador');return;}G.paused=!G.paused;$('overlayPause').classList.toggle('hidden',!G.paused);}
+function togglePause(){if(!G||G.over)return;if(G.mp){toast('No se puede pausar en multijugador');return;}G.paused=!G.paused;if(G.paused)cgStop();else cgStart();$('overlayPause').classList.toggle('hidden',!G.paused);}
 
 /* ============================ RENDER ============================ */
 function resize(){dpr=Math.min(window.devicePixelRatio||1,save.settings.quality==='low'?1:2);view.w=window.innerWidth;view.h=window.innerHeight;cv.width=Math.round(view.w*dpr);cv.height=Math.round(view.h*dpr);}
@@ -1311,7 +1312,7 @@ function renderStats(){const s=save.stats,r=rankOf(save.xp);const c=(l,v,col)=>`
  $('statsGrid').innerHTML=c('Rango','NV.'+r.lv+' '+r.name,'#ffd166')+c('Bajas',fmt(s.kills),'#00f0ff')+c('Derrotas',fmt(s.deaths),'#ff6b9a')+c('Jefes',s.bosses,'#ff0055')+c('Puntería',s.shots?Math.round(s.hits/s.shots*100)+'%':'0%','#ffd166')+c('Mejor oleada',s.bestWave)+c('Mejor combo','x'+s.bestCombo,'#ff7a1a')+c('Créditos ganados',fmt(s.earned),'#ffe066')+c('Partidas',s.games)+c('Victorias P2P',s.pvpWins,'#39ff9c');
  $('achGrid').innerHTML=ACH.map(a=>`<div class="card ach ${save.ach[a.id]?'done':''}" style="padding:10px"><div class="ft" style="font-size:11px">${save.ach[a.id]?'🏆':'🔒'} ${a.n}</div><div class="muted" style="font-size:12px">${a.d}</div></div>`).join('');}
 function renderSettings(){const S=save.settings;const row=(l,k)=>`<div class="row between"><span>${l}</span><div class="toggle ${S[k]?'on':''}" onclick="toggleSet('${k}')"></div></div>`;
- $('settingsList').innerHTML=row('Efectos de sonido','sfx')+row('Música ambiental','music')+row('Sacudida de pantalla','shake')+`<div class="row between"><span>Calidad gráfica</span><div class="row"><span class="pill ${S.quality==='high'?'on':''}" onclick="setQuality('high')">ALTA</span><span class="pill ${S.quality==='low'?'on':''}" onclick="setQuality('low')">BAJA</span></div></div>`;}
+ $('settingsList').innerHTML=`<div class="row between"><span>Language / Idioma</span><div class="row"><span class="pill ${S.language!=='es'?'on':''}" onclick="setLanguage('en')">ENGLISH</span><span class="pill ${S.language==='es'?'on':''}" onclick="setLanguage('es')">ESPAÑOL</span></div></div>`+row('Sound effects / Efectos de sonido','sfx')+row('Background music / Música ambiental','music')+row('Screen shake / Sacudida de pantalla','shake')+`<div class="row between"><span>Graphics quality / Calidad gráfica</span><div class="row"><span class="pill ${S.quality==='high'?'on':''}" onclick="setQuality('high')">HIGH</span><span class="pill ${S.quality==='low'?'on':''}" onclick="setQuality('low')">LOW</span></div></div>`;}
 function toggleSet(k){save.settings[k]=!save.settings[k];persist();Snd.init();Snd.applySettings();renderSettings();}
 function setQuality(q){save.settings.quality=q;persist();resize();renderSettings();}
 
@@ -1342,6 +1343,48 @@ function bindStick(zid,kid,st){const z=$(zid),k=$(kid);
  z.addEventListener('pointermove',e=>{if(st.on&&e.pointerId===st.id)upd(e);});
  const end=e=>{if(e.pointerId===st.id){st.on=false;st.x=st.y=0;k.style.transform='translate(0,0)';}};z.addEventListener('pointerup',end);z.addEventListener('pointercancel',end);}
 function bindHold(id,fn){const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();fn(true);});const up=()=>fn(false);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('pointerleave',up);}
+
+/* ===================== LANGUAGE + CRAZYGAMES SDK ===================== */
+const LANG={
+ en:{
+ 'COMBATE ESPACIAL ARCADE · P2P':'ARCADE SPACE COMBAT · P2P','JUGAR':'PLAY','MULTIJUGADOR P2P (CO-OP / DUELO)':'ONLINE MULTIPLAYER (CO-OP / DUEL)',
+ 'SOBRES · HABILIDADES · SOBRE DIARIO':'PACKS · ABILITIES · DAILY PACK','RANKING GLOBAL':'GLOBAL LEADERBOARD',
+ 'MERCADO · OBJETOS · INTERCAMBIOS':'MARKET · ITEMS · TRADING','HANGAR':'HANGAR','ASTILLERO':'SHIPYARD',
+ 'LOGROS':'ACHIEVEMENTS','AJUSTES':'SETTINGS','NAVE ACTIVA':'ACTIVE SHIP','ELIGE MODO DE JUEGO':'CHOOSE GAME MODE',
+ 'Modo en solitario contra la IA':'Single-player mode against AI','Dificultad:':'Difficulty:',
+ 'MULTIJUGADOR ONLINE':'ONLINE MULTIPLAYER','Partida rápida automática o sala privada con código. Funciona desde cualquier lugar.':'Automatic quick match or private room with a code. Play from anywhere.',
+ 'PARTIDA RÁPIDA ONLINE':'QUICK ONLINE MATCH','BUSCAR RIVAL ONLINE':'FIND ONLINE OPPONENT','CANCELAR':'CANCEL',
+ 'ANFITRIÓN':'HOST','INVITADO':'GUEST','GENERAR CÓDIGO DE SALA':'CREATE ROOM CODE','CONECTAR A LA SALA':'JOIN ROOM',
+ 'HANGAR Y MEJORAS':'HANGAR & UPGRADES','ELIGE NAVE Y MEJORA AL PILOTO.':'CHOOSE A SHIP AND UPGRADE YOUR PILOT.',
+ 'ASTILLERO · 250 NAVES':'SHIPYARD · 250 SHIPS','REGISTRO DE COMBATE':'COMBAT RECORD',
+ 'PAUSA':'PAUSED','REANUDAR':'RESUME','ABANDONAR PARTIDA':'QUIT GAME','VOLVER':'BACK',
+ 'Tu nombre:':'Your name:','Cargando…':'Loading…','Aún no hay puntuaciones. ¡Sé el primero!':'No scores yet. Be the first!',
+ 'BORRAR TODO EL PROGRESO':'DELETE ALL PROGRESS','Efectos de sonido':'Sound effects','Música ambiental':'Background music',
+ 'Sacudida de pantalla':'Screen shake','Calidad gráfica':'Graphics quality','ALTA':'HIGH','BAJA':'LOW',
+ 'SUPERVIVENCIA':'SURVIVAL','ASALTO A JEFES':'BOSS RUSH','CONTRARRELOJ':'TIME ATTACK','DUELO DE ASES':'ACE DUEL',
+ 'LLUVIA KAMIKAZE':'KAMIKAZE RUSH','TORMENTA DE METEORITOS':'METEOR STORM','CALLEJÓN DE FRANCOTIRADORES':'SNIPER ALLEY',
+ 'ASEDIO DE BOMBARDEROS':'BOMBER SIEGE','LA HORDA':'THE HORDE','HARDCORE':'HARDCORE','DESAFÍO DIARIO':'DAILY CHALLENGE',
+ 'MODO EVENTO':'EVENT MODE','COOPERATIVO':'CO-OP','DUELO P2P':'P2P DUEL','DEFIENDE TU GALAXIA':'DEFEND YOUR GALAXY',
+ 'MERCADO P2P':'P2P MARKET','ESCUDOS':'SHIELDS','CASCO':'HULL','IMPULSO':'BOOST','MISIL':'MISSILE','TURBO':'BOOST','HAB':'ABILITY',
+ 'Puntuación final: ':'Final score: ','FIN DE LA PARTIDA':'GAME OVER','¡TIEMPO!':'TIME UP!'
+ },
+ es:{}
+};
+function setLanguage(lang){save.settings.language=lang==='es'?'es':'en';persist();document.documentElement.lang=save.settings.language;applyLanguage();if(screen==='settings')renderSettings();}
+function applyLanguage(){
+ const lang=save.settings.language||'en';document.documentElement.lang=lang;
+ const map=lang==='en'?LANG.en:Object.fromEntries(Object.entries(LANG.en).map(([a,b])=>[b,a]));
+ const walk=root=>{const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){let v=n.nodeValue;for(const [a,b] of Object.entries(map))if(v.includes(a))v=v.split(a).join(b);if(v!==n.nodeValue)n.nodeValue=v;}};
+ walk(document.body);
+ document.querySelectorAll('button,input').forEach(el=>{if(el.placeholder){for(const [a,b] of Object.entries(map))el.placeholder=el.placeholder.split(a).join(b);}});
+}
+const langObserver=new MutationObserver(()=>{if((save.settings.language||'en')==='en')applyLanguage();});
+function initCrazyGames(){
+ try{if(window.CrazyGames&&window.CrazyGames.SDK){window.CrazyGames.SDK.init().then(()=>{window.__cgReady=true;}).catch(e=>console.warn('CrazyGames SDK init:',e));}}catch(e){console.warn(e);}
+}
+function cgStart(){try{if(window.__cgReady&&window.CrazyGames.SDK.environment!=='disabled')window.CrazyGames.SDK.game.gameplayStart();}catch(e){}}
+function cgStop(){try{if(window.__cgReady&&window.CrazyGames.SDK.environment!=='disabled')window.CrazyGames.SDK.game.gameplayStop();}catch(e){}}
+
 window.addEventListener('load',()=>{cv=$('c');ctx=cv.getContext('2d');resize();window.addEventListener('resize',resize);
  NEB=buildNebula();const pr=mulberry(3);PLANETS.push({img:buildPlanet(0),x:pr()*2000,y:pr()*1200,par:.16,size:520},{img:buildPlanet(1),x:pr()*2000+900,y:pr()*1200,par:.07,size:360});
  initDecor();bindStick('stickL','knobL',stickL);bindStick('stickR','knobR',stickR);bindHold('btnMissile',v=>btnMissile=v);bindHold('btnBoost',v=>btnBoost=v);bindHold('btnAb',v=>btnAb=v);
@@ -1352,7 +1395,7 @@ window.addEventListener('load',()=>{cv=$('c');ctx=cv.getContext('2d');resize();w
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&G&&G.running&&!G.over&&!G.mp&&!G.paused)togglePause();for(const k in keys)keys[k]=false;mouse.down=false;});
  window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;mouse.down=false;});
  document.addEventListener('pointerdown',()=>{Snd.init();Snd.resume();},{once:true});
- applyEvent();persist();if(dbOn())setTimeout(syncAll,3000);
+ applyEvent();persist();initCrazyGames();langObserver.observe(document.body,{childList:true,subtree:true,characterData:true});applyLanguage();if(dbOn())setTimeout(syncAll,3000);
  refreshTop();showScreen('menu');requestAnimationFrame(frame);});
 </script>
 </body>
