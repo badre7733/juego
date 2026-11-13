@@ -1,0 +1,5 @@
+
+User-agent: *
+Allow: /
+
+Sitemap: https://quantumvoid.vercel.app/sitemap.xml
